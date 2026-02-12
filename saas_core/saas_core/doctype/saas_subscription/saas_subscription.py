@@ -19,9 +19,9 @@ def handle_subscription_update(self):
 	if self.payment_status == "Paid":
 
 		user = frappe.get_doc("User", self.user)
-		if user.role_profile_name != "Paid Plan User":
+		if user.role_profile_name != "Paid Plan User":   # just replace "Paid Plan User" with the actual role profile name you want to assign
 			# Assignin role profile
-			user.role_profile_name = "Paid Plan User"                                               
+			user.role_profile_name = "Paid Plan User"                             
 
 			user.save(ignore_permissions=True)  
 
@@ -31,4 +31,13 @@ def handle_subscription_update(self):
 				)
 
 			frappe.msgprint("User upgraded to Paid Plan")
+	
+	elif self.payment_status == "Pending":
+		user = frappe.get_doc("User", self.user)
+		if user.role_profile_name == "Paid Plan User":  # just replace "Paid Plan User" with the actual role profile name you want to assign
 
+			user.save(ignore_permissions=True)  
+
+			frappe.msgprint("User downgraded to Free Plan")
+
+    

@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "naming_series:",
  "creation": "2026-02-06 16:36:58.553703",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -242,7 +243,7 @@
    "no_copy": 1,
    "oldfieldname": "email",
    "oldfieldtype": "Data",
-   "options": "Email",
+   "options": "Email",   
    "reqd": 1
   },
   {
@@ -250,7 +251,7 @@
    "fieldtype": "Data",
    "label": "User Password",
    "no_copy": 1
-  },
+  }, 
   {
    "fieldname": "first_name",
    "fieldtype": "Data",

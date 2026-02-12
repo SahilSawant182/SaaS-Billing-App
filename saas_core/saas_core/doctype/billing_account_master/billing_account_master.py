@@ -6,6 +6,7 @@ from frappe.model.document import Document
 
 class BillingAccountMaster(Document):
 
+
     def after_insert(self):
         try:
             # Create and Link Company
