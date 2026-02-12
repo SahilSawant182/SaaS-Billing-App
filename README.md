@@ -1,7 +1,4 @@
-### SaaS Core
-
-Core SaaS logic and multi-tenant enforcement
-
+### SaaS Billing App
 ### Installation
 
 You can install this app using the [bench](https://github.com/frappe/bench) CLI:
