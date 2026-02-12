@@ -7,18 +7,43 @@ from frappe.model.document import Document
 
 class ModuleConfigurationSetting(Document):
 
-    # Load existing permissions ONLY when document is new
-    def before_insert(self):
-        self.load_existing_permissions()
-
-    #Load existing permissions based on selected user and module
-    def load_existing_permissions(self):
-
+    def validate(self):
         if not self.user:
             return
 
-        roles = frappe.get_roles(self.user)
+        # If table has rows but no permissions set yet → load existing
+        if self.doctypes and self._is_all_permissions_empty():
+            self.load_existing_permissions()
+        else:
+            self.apply_permissions()
 
+    #Check if all permissions are empty for the doctypes table
+    def _is_all_permissions_empty(self):
+        for row in self.doctypes:
+            if any([
+                row.perm_select,
+                row.perm_read,
+                row.perm_write,
+                row.perm_create,
+                row.perm_delete,
+                row.perm_submit,
+                row.perm_cancel,
+                row.perm_amend,
+                row.perm_print,
+                row.perm_email,
+                row.perm_report,
+                row.perm_import,
+                row.perm_export,
+                row.perm_share,
+                row.perm_if_owner
+            ]):
+                return False
+        return True
+
+    #Load existing permissions for the selected user and module
+    def load_existing_permissions(self):
+
+        roles = frappe.get_roles(self.user)
         if not roles:
             return
 
@@ -29,7 +54,6 @@ class ModuleConfigurationSetting(Document):
 
             self.reset_row_permissions(row)
 
-            # Standard DocPerm
             standard_perms = frappe.get_all(
                 "DocPerm",
                 filters={
@@ -40,7 +64,6 @@ class ModuleConfigurationSetting(Document):
                 fields=self.get_permission_fields()
             )
 
-            # Custom DocPerm
             custom_perms = frappe.get_all(
                 "Custom DocPerm",
                 filters={
@@ -51,12 +74,11 @@ class ModuleConfigurationSetting(Document):
                 fields=self.get_permission_fields()
             )
 
-            all_perms = standard_perms + custom_perms
+            for perm in (standard_perms + custom_perms):
+                self.apply_permission_to_row(row, perm)
 
-            for p in all_perms:
-                self.apply_permission_to_row(row, p)
+    #Apply permissions from a permission dict to the row, using OR logic to combine permissions from multiple roles
 
-    # Apply permission using OR logic 
     def apply_permission_to_row(self, row, p):
 
         row.perm_select = row.perm_select or p.get("select", 0)
@@ -75,23 +97,13 @@ class ModuleConfigurationSetting(Document):
         row.perm_share = row.perm_share or p.get("share", 0)
         row.perm_if_owner = row.perm_if_owner or p.get("if_owner", 0)
 
+    # Reset all permission fields in the row to 0 before loading existing permissions
+
     def reset_row_permissions(self, row):
 
-        row.perm_select = 0
-        row.perm_read = 0
-        row.perm_write = 0
-        row.perm_create = 0
-        row.perm_delete = 0
-        row.perm_submit = 0
-        row.perm_cancel = 0
-        row.perm_amend = 0
-        row.perm_print = 0
-        row.perm_email = 0
-        row.perm_report = 0
-        row.perm_import = 0
-        row.perm_export = 0
-        row.perm_share = 0
-        row.perm_if_owner = 0
+        for field in self.get_permission_fields():
+            setattr(row, f"perm_{field}", 0)
+
 
     def get_permission_fields(self):
         return [
@@ -112,29 +124,37 @@ class ModuleConfigurationSetting(Document):
             "if_owner"
         ]
 
-    #Apply permissions when the document is submitted
-
-    def on_submit(self):
-        self.apply_permissions()
-
+    #Apply permissions by creating/updating a role and assigning it to the user
     def apply_permissions(self):
 
-        if not self.user:
-            return
+        role_name = f"Module Access - {self.user}"
 
-        role_name = f"Module Role - {self.name}"
-
-        # Create role if not exists
+        # Create role ONLY if not exists
         if not frappe.db.exists("Role", role_name):
             frappe.get_doc({
                 "doctype": "Role",
                 "role_name": role_name
             }).insert(ignore_permissions=True)
 
-        # Delete old custom permissions of this role
-        frappe.db.delete("Custom DocPerm", {"role": role_name})
+        #Ensure role assigned only once
+        if not frappe.db.exists("Has Role", {
+            "parent": self.user,
+            "role": role_name
+        }):
+            frappe.get_doc({
+                "doctype": "Has Role",
+                "parent": self.user,
+                "parenttype": "User",
+                "parentfield": "roles",
+                "role": role_name
+            }).insert(ignore_permissions=True)
 
-        # Create new Custom DocPerm based on edited checkboxes
+        #Delete only this role's old permissions
+        frappe.db.delete("Custom DocPerm", {
+            "role": role_name
+        })
+
+        # Recreate permissions from UI
         for row in self.doctypes:
 
             if not row.doctype_name:
@@ -164,27 +184,8 @@ class ModuleConfigurationSetting(Document):
                 "if_owner": row.perm_if_owner
             }).insert(ignore_permissions=True)
 
-        # Remove old roles (except system roles)
-        user_roles = frappe.get_all(
-            "Has Role",
-            filters={"parent": self.user},
-            fields=["name", "role"]
-        )
-
-        for ur in user_roles:
-            if ur.role not in ["Administrator", "All", "Guest"]:
-                frappe.delete_doc("Has Role", ur.name, ignore_permissions=True)
-
-        # Assign new role to user
-        frappe.get_doc({
-            "doctype": "Has Role",
-            "parent": self.user,
-            "parenttype": "User",
-            "parentfield": "roles",
-            "role": role_name
-        }).insert(ignore_permissions=True)
-
         frappe.db.commit()
+
 
 
 
