@@ -64,12 +64,14 @@
    "default": "0",
    "fieldname": "perm_delete",
    "fieldtype": "Check",
+   "in_list_view": 1,
    "label": "Delete"
   },
   {
    "default": "0",
    "fieldname": "perm_submit",
    "fieldtype": "Check",
+   "in_list_view": 1,
    "label": "Submit"
   },
   {
@@ -124,6 +126,7 @@
    "default": "0",
    "fieldname": "perm_cancel",
    "fieldtype": "Check",
+   "in_list_view": 1,
    "label": "Cancel"
   }
  ],
@@ -131,7 +134,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-02-12 10:20:48.714906",
+ "modified": "2026-02-13 09:47:33.966153",
  "modified_by": "Administrator",
  "module": "SaaS Core",
  "name": "Module Configuration Doctype",
